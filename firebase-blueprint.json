@@ -1,0 +1,130 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user (worker or admin)",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["worker", "admin"] },
+        "commissionWallet": { "type": "number", "description": "Accumulated approved commissions" },
+        "pendingCommissions": { "type": "number", "description": "Commissions awaiting approval" }
+      },
+      "required": ["email", "role"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Lead/Client information",
+      "type": "object",
+      "properties": {
+        "dni": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "sex": { "type": "string", "enum": ["M", "F"] },
+        "laborData": {
+          "type": "object",
+          "properties": {
+            "company": { "type": "string" },
+            "laborStatus": { "type": "string", "enum": ["contratado", "nombrado"] },
+            "modularCode": { "type": "string" },
+            "positionCode": { "type": "string" },
+            "startDate": { "type": "string", "format": "date" },
+            "endDate": { "type": "string", "format": "date" }
+          }
+        },
+        "financialData": {
+          "type": "object",
+          "properties": {
+            "previousCredits": { "type": "number" },
+            "currentDebt": { "type": "number" },
+            "paymentHistory": { "type": "string" }
+          }
+        },
+        "phones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "number": { "type": "string" },
+              "hasWhatsapp": { "type": "boolean" }
+            }
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["available", "assigned", "interested", "thinking", "not_interested", "closed"]
+        },
+        "assignedTo": { "type": "string", "description": "UID of the worker attending the client" },
+        "lockedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["dni", "firstName", "lastName", "status"]
+    },
+    "Credit": {
+      "title": "Credit Application",
+      "description": "Credit request submitted by a worker",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string" },
+        "workerId": { "type": "string" },
+        "amount": { "type": "number", "enum": [500, 1000, 1500] },
+        "commission": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "rejectionReason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "approvedAt": { "type": "string", "format": "date-time" },
+        "adminId": { "type": "string", "description": "UID of admin who approved/rejected" }
+      },
+      "required": ["clientId", "workerId", "amount", "status"]
+    },
+    "Interaction": {
+      "title": "Interaction Log",
+      "description": "Log of messages or calls made to a client",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string" },
+        "workerId": { "type": "string" },
+        "type": { "type": "string", "enum": ["call", "whatsapp"] },
+        "result": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Liquidation": {
+      "title": "Liquidation",
+      "description": "Record of commission payout to a worker",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "paymentMethod": { "type": "string", "enum": ["efectivo", "transferencia", "yapeo"] },
+        "note": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount", "paymentMethod", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "User notification",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["info", "success", "warning", "error"] },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "type", "read", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "Users profile" },
+    "/clients/{clientId}": { "schema": "Client", "description": "Leads and clients" },
+    "/credits/{creditId}": { "schema": "Credit", "description": "Credit applications" },
+    "/clients/{clientId}/interactions/{interactionId}": { "schema": "Interaction", "description": "History details" },
+    "/liquidations/{liquidationId}": { "schema": "Liquidation", "description": "Worker payout history" },
+    "/notifications/{notificationId}": { "schema": "Notification", "description": "User notifications" }
+  }
+}
