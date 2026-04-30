@@ -16,7 +16,7 @@ export default defineConfig(({mode}) => {
       },
     },
     server: {
-      allowedHosts: ['.ngrok-free.app'],
+      allowedHosts: ['.ngrok-free.app', 'credicall-wt.jamuywasi.com'],
       hmr: process.env.DISABLE_HMR !== 'true',
     },
   };
