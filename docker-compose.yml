@@ -6,9 +6,9 @@ services:
         VITE_UGEL_API_URL: ${VITE_UGEL_API_URL}
         VITE_WHATSAPP_API_URL: ${VITE_WHATSAPP_API_URL}
     ports:
-      - "3000:3000"
+      - "3006:3006"
     environment:
       NODE_ENV: production
-      PORT: 3000
+      PORT: 3006
       VITE_UGEL_API_URL: ${VITE_UGEL_API_URL}
       VITE_WHATSAPP_API_URL: ${VITE_WHATSAPP_API_URL}
