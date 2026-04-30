@@ -75,7 +75,7 @@ function smartParse(val: any) {
 // explicitly specify the path to handle potential CWD issues
 dotenv.config({ 
   path: path.join(process.cwd(), '.env'),
-  override: true 
+  override: false 
 });
 
 const __filename = fileURLToPath(import.meta.url);
@@ -83,7 +83,7 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = 3006;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(cors());
   app.use(express.json());
