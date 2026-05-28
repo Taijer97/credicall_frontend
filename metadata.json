@@ -1,0 +1,6 @@
+{
+  "name": "CrediCall WasiTech",
+  "description": "Dashboard para call center de créditos con gestión de leads, sistema de bloqueo de clientes, comisiones, aprobación administrativa e integración con API externa de UGEL Atalaya.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
