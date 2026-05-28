@@ -1,0 +1,14 @@
+services:
+  app:
+    build:
+      context: .
+      args:
+        VITE_UGEL_API_URL: ${VITE_UGEL_API_URL}
+        VITE_WHATSAPP_API_URL: ${VITE_WHATSAPP_API_URL}
+    ports:
+      - "3006:3006"
+    environment:
+      NODE_ENV: production
+      PORT: 3006
+      VITE_UGEL_API_URL: ${VITE_UGEL_API_URL}
+      VITE_WHATSAPP_API_URL: ${VITE_WHATSAPP_API_URL}
