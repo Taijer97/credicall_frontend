@@ -342,8 +342,13 @@ export default function App() {
           >
             <div className="bg-surface border border-slate-800 p-8 rounded-3xl shadow-2xl max-w-md w-full space-y-8">
               <div className="text-center space-y-2">
-                <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
-                  <ShieldCheck size={32} />
+                <div className="w-32 h-32 md:w-40 md:h-40 mx-auto mb-4 flex items-center justify-center">
+                  <img 
+                    src="/logo-credicall.png" 
+                    alt="CrediCall Logo" 
+                    referrerPolicy="no-referrer" 
+                    className="w-full h-full object-contain filter drop-shadow-[0_0_24px_rgba(16,185,129,0.15)]"
+                  />
                 </div>
                 <h1 className="text-2xl font-black text-white uppercase tracking-widest">CrediCall WasiTech</h1>
                 <p className="text-slate-500 text-xs uppercase tracking-widest font-bold">

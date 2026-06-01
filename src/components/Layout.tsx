@@ -103,11 +103,26 @@ export function Layout({ children, user, profile, onLogout, onProfileClick }: La
         <header className="sticky top-0 z-40 p-3 md:p-6 pb-0">
           <div className="max-w-7xl mx-auto bg-surface border border-slate-800 rounded-xl md:rounded-2xl px-4 md:px-6 py-2.5 md:py-4 flex items-center justify-between">
             <div className="flex items-center gap-2 md:gap-4 shrink-0">
-              <div className="w-7 h-7 md:w-10 md:h-10 bg-emerald-500 rounded-lg flex items-center justify-center text-black font-bold text-sm md:text-xl shrink-0">
-                {profile?.role === 'admin' ? 'A' : profile?.role === 'support' ? 'S' : 'C'}
+              <div className="w-12 h-12 md:w-16 md:h-16 flex items-center justify-center shrink-0">
+                <img
+                  src="/logo-credicall.png"
+                  alt="CrediCall Logo"
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-contain filter drop-shadow-[0_0_16px_rgba(16,185,129,0.12)]"
+                />
               </div>
               <div className="min-w-0">
-                <h1 className="text-xs md:text-lg font-bold text-white leading-none truncate pr-2">CrediCall</h1>
+                <div className="flex items-center gap-1.5 font-bold text-white text-xs md:text-lg select-none leading-none">
+                  <h1 className="truncate pr-1">CrediCall</h1>
+                  <span className={cn(
+                    "text-[7px] md:text-[8px] font-black uppercase px-1 py-0.5 rounded tracking-tighter shrink-0 border",
+                    profile?.role === 'admin' ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' :
+                    profile?.role === 'support' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' :
+                    'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                  )}>
+                    {profile?.role === 'admin' ? 'Admin' : profile?.role === 'support' ? 'Soporte' : 'Asesor'}
+                  </span>
+                </div>
                 <span className="hidden md:inline text-[10px] text-slate-500 uppercase tracking-widest">Atención Crediticia</span>
                 <span className="md:hidden text-[8px] text-slate-500 uppercase font-black">WasiTech</span>
               </div>
