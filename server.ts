@@ -224,7 +224,7 @@ async function getOrUpdateUgelLeadsCache(): Promise<any[]> {
 
 async function startServer() {
   const app = express();
-  const PORT = 3006;
+  const PORT = 3000;
 
   app.use(cors());
   app.use(express.json());

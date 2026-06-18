@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, doc, updateDoc, increment, writeBatch, serverTimestamp, getDocs, deleteDoc, orderBy, addDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { type Credit, type UserProfile, type Client, type Liquidation, type Role } from '../types';
-import { Check, X, ShieldAlert, Award, RefreshCw, Users, TrendingUp, BarChart3, UserMinus, ShieldCheck, PieChart, Wallet, Trash2, History, Banknote, Loader2, User } from 'lucide-react';
+import { Check, X, ShieldAlert, Award, RefreshCw, Users, TrendingUp, BarChart3, UserMinus, ShieldCheck, PieChart, Wallet, Trash2, History, Banknote, Loader2, User, Printer, ExternalLink } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { forceSeed } from '../lib/seed';
@@ -18,6 +18,149 @@ export function AdminPanel({ profile }: { profile: UserProfile }) {
     }
   }, [isSupport, activeTab]);
   const [pendingCredits, setPendingCredits] = useState<Credit[]>([]);
+  const [showReceiptModal, setShowReceiptModal] = useState<{ receipt: any, user: UserProfile } | null>(null);
+
+  const printReceipt = (receiptData: any, userProfile: any) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '1px';
+    iframe.style.height = '1px';
+    iframe.style.opacity = '0.01';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const docRef = iframe.contentWindow?.document || iframe.contentDocument;
+    if (!docRef) return;
+
+    const dateStr = receiptData.createdAt?.toDate 
+      ? receiptData.createdAt.toDate().toLocaleString('es-PE') 
+      : new Date().toLocaleString('es-PE');
+
+    const html = `
+      <html>
+        <head>
+          <title>Recibo de Liquidación - CrediCall WasiTech</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
+            body {
+              font-family: 'Courier Prime', Courier, monospace;
+              padding: 24px;
+              color: #000;
+              background: #fff;
+              max-width: 380px;
+              margin: 0 auto;
+              font-size: 13px;
+              line-height: 1.4;
+            }
+            .text-center { text-align: center; }
+            .header { margin-bottom: 20px; }
+            .logo { font-size: 18px; font-weight: bold; letter-spacing: 1px; }
+            .subtitle { font-size: 11px; color: #555; text-transform: uppercase; margin-top: 4px; }
+            .divider { border-top: 1px dashed #000; margin: 12px 0; }
+            .amount { font-size: 22px; font-weight: bold; margin: 10px 0; text-align: center; }
+            .receipt-title { font-size: 14px; font-weight: bold; margin-bottom: 12px; text-transform: uppercase; }
+            .field { display: flex; justify-content: space-between; margin-bottom: 6px; }
+            .label { font-weight: bold; }
+            .value { text-align: right; }
+            .note { margin-top: 12px; font-style: italic; font-size: 12px; word-break: break-all; }
+            .footer { margin-top: 30px; font-size: 10px; color: #555; text-transform: uppercase; }
+            @media print {
+              body { padding: 10px; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="text-center header">
+            <div class="logo">CREDICALL WASITECH</div>
+            <div class="subtitle">Atención Crediticia • Liquidación</div>
+          </div>
+          <div class="divider"></div>
+          <div class="text-center receipt-title">RECEPCIÓN DE LIQUIDACIÓN</div>
+          <div class="amount">S/ ${parseFloat(receiptData.amount || '0').toFixed(2)}</div>
+          <div class="divider"></div>
+          <div class="field">
+            <span class="label">ID Ref:</span>
+            <span class="value">${receiptData.id || 'N/A'}</span>
+          </div>
+          <div class="field">
+            <span class="label">Fecha:</span>
+            <span class="value">${dateStr}</span>
+          </div>
+          <div class="field">
+            <span class="label">Beneficiario:</span>
+            <span class="value">${userProfile?.displayName || 'Asesor'}</span>
+          </div>
+          <div class="field">
+            <span class="label">Email:</span>
+            <span class="value">${userProfile?.email || 'N/A'}</span>
+          </div>
+          <div class="field">
+            <span class="label">DNI:</span>
+            <span class="value">${userProfile?.dni || 'N/A'}</span>
+          </div>
+          <div class="field">
+            <span class="label">Método Pago:</span>
+            <span class="value" style="text-transform: uppercase;">${receiptData.paymentMethod}</span>
+          </div>
+          <div class="divider"></div>
+          ${receiptData.note ? `
+            <div class="field-vertical" style="text-align: left;">
+              <div class="label">Nota/Especificación:</div>
+              <div class="note">${receiptData.note}</div>
+            </div>
+            <div class="divider"></div>
+          ` : ''}
+          <div class="text-center footer">
+            ¡Transacción Procesada con Éxito!<br>
+            WasiTech Systems S.A.C.<br>
+            ${new Date().getFullYear()}
+          </div>
+        </body>
+      </html>
+    `;
+
+    docRef.open();
+    docRef.write(html);
+    docRef.close();
+
+    // Safely focus and trigger native browser print in the iframe scope,
+    // then clean up the iframe from our parent scope to prevent SecurityErrors.
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (err) {
+        console.error("No se pudo iniciar el diálogo de impresión:", err);
+      }
+      setTimeout(() => {
+        try {
+          document.body.removeChild(iframe);
+        } catch (cleanupErr) {
+          console.error("Error al limpiar iframe de impresión:", cleanupErr);
+        }
+      }, 1000);
+    }, 500);
+  };
+
+  const getWhatsAppShareUrl = (receiptData: any, userProfile: any) => {
+    const amountStr = `S/ ${parseFloat(receiptData.amount || '0').toFixed(2)}`;
+    const dateStr = receiptData.createdAt?.toDate 
+      ? receiptData.createdAt.toDate().toLocaleString('es-PE') 
+      : new Date().toLocaleString('es-PE');
+    
+    const text = `*CREDICALL WASITECH* 🟢\n*COMPROBANTE DE LIQUIDACIÓN DE BILLETERA*\n\n━━━━━━━━━━━━━━━━━━━━━━━━\nID Ref: \`#${receiptData.id || 'N/A'}\`\nFecha: ${dateStr}\n━━━━━━━━━━━━━━━━━━━━━━━━\n\n👤 *Beneficiario:* ${userProfile?.displayName || 'Asesor'}\n${userProfile?.dni ? `🆔 *DNI:* ${userProfile.dni}\n` : ''}💰 *Monto Liquidado:* ${amountStr}\n💳 *Método de Pago:* ${receiptData.paymentMethod?.toUpperCase()}\n\n${receiptData.note ? `📝 *Nota/Comentario:*\n_${receiptData.note}_\n` : ''}\n━━━━━━━━━━━━━━━━━━━━━━━━\n✅ *Estado:* LIQUIDADO Y ENVIADO\n¡Muchas gracias por trabajar con nosotros!\nWasiTech Systems S.A.C.\n━━━━━━━━━━━━━━━━━━━━━━━━`;
+
+    const phone = userProfile?.whatsappNumber || userProfile?.phoneNumber || '';
+    const cleanPhone = phone.replace(/\D/g, '');
+    let targetPhone = cleanPhone;
+    if (targetPhone.length === 9) {
+      targetPhone = `51${targetPhone}`;
+    }
+
+    return `https://api.whatsapp.com/send?phone=${targetPhone}&text=${encodeURIComponent(text)}`;
+  };
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [allCredits, setAllCredits] = useState<Credit[]>([]);
   const [allClients, setAllClients] = useState<Client[]>([]);
@@ -212,9 +355,19 @@ export function AdminPanel({ profile }: { profile: UserProfile }) {
       });
 
       await batch.commit();
-      alert('Liquidación procesada correctamente');
+
+      const newLiq = {
+        id: liqRef.id,
+        userId: showLiquidationModal.id,
+        amount: liquidationForm.amount,
+        paymentMethod: liquidationForm.paymentMethod,
+        note: liquidationForm.note,
+        createdAt: { toDate: () => new Date() }
+      };
+
       setShowLiquidationModal(null);
       setLiquidationForm({ amount: 0, paymentMethod: 'transferencia', note: '' });
+      setShowReceiptModal({ receipt: newLiq, user: showLiquidationModal });
     } catch (error) {
       console.error('Liquidation error:', error);
       alert('Error al procesar la liquidación');
@@ -887,18 +1040,32 @@ export function AdminPanel({ profile }: { profile: UserProfile }) {
                       {liquidations
                         .filter(l => l.userId === selectedUserLiquidations)
                         .map(liq => (
-                          <div key={liq.id} className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl flex justify-between items-start">
+                          <div key={liq.id} className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl flex justify-between items-center">
                             <div>
                               <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">{liq.paymentMethod}</div>
                               <div className="text-base font-black text-white">{formatCurrency(liq.amount)}</div>
-                              <div className="mt-2 text-[10px] text-slate-400">
-                                <span className="font-bold text-slate-500">Nota:</span> {liq.note || 'Sin nota'}
+                              <div className="mt-1 text-[10px] text-slate-400">
+                                <span className="font-bold text-slate-500 font-mono tracking-wider uppercase text-[8px]">Nota:</span> {liq.note || 'Sin nota'}
                               </div>
                             </div>
-                            <div className="text-right">
-                              <div className="text-[10px] font-bold text-slate-500">
-                                {liq.createdAt?.toDate()?.toLocaleString() || 'Reciente'}
+                            <div className="text-right flex flex-col items-end gap-2">
+                              <div className="text-[9px] font-bold text-slate-500 font-mono">
+                                {liq.createdAt?.toDate()?.toLocaleString('es-PE') || 'Reciente'}
                               </div>
+                              <button
+                                onClick={() => {
+                                  const targetUser = allUsers.find(u => u.id === liq.userId);
+                                  if (targetUser) {
+                                    setShowReceiptModal({
+                                      receipt: liq,
+                                      user: targetUser
+                                    });
+                                  }
+                                }}
+                                className="px-2 py-1 bg-indigo-500/10 hover:bg-indigo-500 border border-indigo-500/20 hover:border-indigo-500 text-indigo-400 hover:text-black rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 transition-all cursor-pointer shadow-lg shadow-indigo-500/5"
+                              >
+                                <Printer size={10} /> Recibo
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -1119,6 +1286,114 @@ export function AdminPanel({ profile }: { profile: UserProfile }) {
                   >
                     {liquidating ? 'Procesando...' : 'Confirmar Liquidación'}
                   </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Liquidation Receipt Modal */}
+      <AnimatePresence>
+        {showReceiptModal && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/95 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-surface w-full max-w-sm rounded-2xl border border-slate-800 shadow-2xl overflow-hidden"
+            >
+              <div className="p-5 border-b border-slate-800 bg-black/20 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Printer size={18} className="text-emerald-500" />
+                  <h3 className="text-xs font-black text-white uppercase tracking-widest">Recibo de Liquidación</h3>
+                </div>
+                <button onClick={() => setShowReceiptModal(null)} className="text-slate-500 hover:text-white">
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Receipt Area (Stylized POS Ticket style) */}
+              <div className="p-6 space-y-4">
+                <div className="bg-black/30 border border-slate-800 rounded-xl p-5 space-y-3 font-mono text-center select-all">
+                  <div className="text-xs font-black text-slate-400 uppercase tracking-wider">CrediCall WasiTech</div>
+                  <div className="text-[9px] text-slate-500 uppercase">Atención Crediticia</div>
+                  <div className="border-t border-dashed border-slate-800 my-2"></div>
+                  
+                  <div className="text-[9px] text-left text-slate-500 flex justify-between">
+                    <span className="text-slate-400 font-bold uppercase">ID Ref:</span>
+                    <span className="text-slate-300 font-bold tracking-tight">{showReceiptModal.receipt.id ? `${showReceiptModal.receipt.id.slice(0, 14)}...` : 'N/A'}</span>
+                  </div>
+                  <div className="text-[9px] text-left text-slate-500 flex justify-between">
+                    <span className="text-slate-400 font-bold uppercase">Fecha:</span>
+                    <span className="text-slate-300">
+                      {showReceiptModal.receipt.createdAt?.toDate 
+                        ? showReceiptModal.receipt.createdAt.toDate().toLocaleString('es-PE') 
+                        : new Date().toLocaleString('es-PE')}
+                    </span>
+                  </div>
+                  <div className="text-[9px] text-left text-slate-500 flex justify-between gap-2">
+                    <span className="text-slate-400 font-bold uppercase shrink-0">Beneficiario:</span>
+                    <span className="text-slate-300 font-bold uppercase truncate">{showReceiptModal.user?.displayName}</span>
+                  </div>
+                  {showReceiptModal.user?.dni && (
+                    <div className="text-[9px] text-left text-slate-500 flex justify-between">
+                      <span className="text-slate-400 font-bold uppercase">DNI:</span>
+                      <span className="text-slate-300">{showReceiptModal.user.dni}</span>
+                    </div>
+                  )}
+                  <div className="text-[9px] text-left text-slate-500 flex justify-between">
+                    <span className="text-slate-400 font-bold uppercase">Método Pago:</span>
+                    <span className="text-slate-300 font-bold uppercase">{showReceiptModal.receipt.paymentMethod}</span>
+                  </div>
+                  
+                  <div className="border-t border-dashed border-slate-800 my-2"></div>
+                  <div className="text-[9px] text-slate-500 uppercase tracking-widest mb-1">Monto Liquidado</div>
+                  <div className="text-2xl font-black text-emerald-400 font-mono">{formatCurrency(showReceiptModal.receipt.amount)}</div>
+                  <div className="border-t border-dashed border-slate-800 my-2"></div>
+
+                  {showReceiptModal.receipt.note && (
+                    <div className="text-left text-[9px] text-slate-400">
+                      <span className="font-bold text-slate-500 uppercase text-[8px] font-mono">Nota:</span>
+                      <p className="mt-1 bg-black/20 p-2 rounded border border-slate-800/40 italic break-words leading-normal">{showReceiptModal.receipt.note}</p>
+                    </div>
+                  )}
+
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider mt-2">¡Transacción Exitosa!</div>
+                </div>
+
+                {/* Primary Action Buttons */}
+                <div className="space-y-2">
+                  <button
+                    onClick={() => printReceipt(showReceiptModal.receipt, showReceiptModal.user)}
+                    className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-blue-500/10"
+                  >
+                    <Printer size={14} /> Imprimir Recibo
+                  </button>
+
+                  <a
+                    href={getWhatsAppShareUrl(showReceiptModal.receipt, showReceiptModal.user)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-500/10 text-center"
+                  >
+                    <ExternalLink size={14} /> Enviar por WhatsApp
+                  </a>
+
+                  <button
+                    onClick={() => setShowReceiptModal(null)}
+                    className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all cursor-pointer"
+                  >
+                    Cerrar
+                  </button>
+
+                  <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 text-[9px] text-amber-300/80 leading-normal space-y-1.5 mt-2">
+                    <p className="font-black uppercase tracking-widest text-amber-400">💡 Tip de Impresión</p>
+                    <p>El navegador puede restringir la impresión de recibos dentro de la vista integrada (iframe). Para imprimir sin límites:</p>
+                    <div className="font-bold text-white bg-amber-500/10 p-2 rounded border border-amber-500/20 text-center uppercase tracking-wider">
+                      Abre la App en una pestaña nueva ↗
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>
