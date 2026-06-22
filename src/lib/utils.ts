@@ -27,5 +27,8 @@ export function getCommission(amount: number) {
   if (amount === 500) return 25;
   if (amount === 1000) return 50;
   if (amount === 1500) return 75;
+  if (amount === 2000) return 100;
+  if (amount === 2500) return 125;
+  if (amount === 3000) return 150;
   return 0;
 }

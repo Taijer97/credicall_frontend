@@ -15,10 +15,13 @@ interface CreditFormProps {
   onConsultData: () => Promise<void>;
 }
 
-const CHARGE_MAP = {
+const CHARGE_MAP: Record<CreditAmount, { min: number; max: number }> = {
   500: { min: 1600, max: 1900 },
   1000: { min: 3000, max: 3400 },
-  1500: { min: 4400, max: 4600 }
+  1500: { min: 4400, max: 4600 },
+  2000: { min: 6200, max: 6800 },
+  2500: { min: 7800, max: 8000 },
+  3000: { min: 10000, max: 10200 }
 };
 
 export function CreditForm({ client, workerId, onClose, previousDebt, previousInstallment, onConsultData }: CreditFormProps) {
@@ -159,13 +162,13 @@ export function CreditForm({ client, workerId, onClose, previousDebt, previousIn
               <Calculator size={14} />
               <span className="text-[10px] uppercase tracking-widest font-black">1. Monto en Efectivo</span>
             </div>
-            <div className="flex gap-2">
-              {[500, 1000, 1500].map((amt) => (
+            <div className="grid grid-cols-3 gap-2">
+              {[500, 1000, 1500, 2000, 2500, 3000].map((amt) => (
                 <button
                   key={amt}
                   onClick={() => setSelectedAmount(amt as CreditAmount)}
                   className={cn(
-                    "flex-1 py-3 rounded-2xl border-2 transition-all font-black text-xs",
+                    "py-3 rounded-2xl border-2 transition-all font-black text-xs",
                     selectedAmount === amt 
                       ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.1)]" 
                       : "border-slate-800 text-slate-500 hover:border-slate-700 bg-black/20"

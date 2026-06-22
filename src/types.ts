@@ -1,7 +1,7 @@
 export type Role = 'worker' | 'admin' | 'visit' | 'support';
 export type ClientStatus = 'available' | 'assigned' | 'interested' | 'thinking' | 'not_interested' | 'closed';
 export type CreditStatus = 'pending' | 'approved' | 'rejected';
-export type CreditAmount = 500 | 1000 | 1500;
+export type CreditAmount = 500 | 1000 | 1500 | 2000 | 2500 | 3000;
 
 export interface UserProfile {
   id: string;
