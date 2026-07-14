@@ -166,6 +166,10 @@ export function AdminPanel({ profile }: { profile: UserProfile }) {
   const [allClients, setAllClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [resetting, setResetting] = useState(false);
+  const [resettingClients, setResettingClients] = useState(false);
+  const [showResetClientsConfirm, setShowResetClientsConfirm] = useState(false);
+  const [showFormatDBConfirm, setShowFormatDBConfirm] = useState(false);
+  const [adminFeedback, setAdminFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const [selectedUserDetails, setSelectedUserDetails] = useState<string | null>(null);
   const [selectedUserHistory, setSelectedUserHistory] = useState<string | null>(null);
   const [selectedUserLiquidations, setSelectedUserLiquidations] = useState<string | null>(null);
@@ -236,9 +240,8 @@ export function AdminPanel({ profile }: { profile: UserProfile }) {
   }, []);
 
   const handleReset = async () => {
-    if (!confirm('¿ESTÁ SEGURO? Esto borrará todos los clientes actuales y volverá a cargar los datos de prueba.')) return;
-    
     setResetting(true);
+    setShowFormatDBConfirm(false);
     try {
       const q = query(collection(db, 'clients'));
       const snapshot = await getDocs(q);
@@ -250,12 +253,57 @@ export function AdminPanel({ profile }: { profile: UserProfile }) {
       await batch.commit();
       
       await forceSeed();
-      alert('Base de datos reseteada correctamente.');
-      window.location.reload();
+      setAdminFeedback({
+        type: 'success',
+        message: 'La base de datos se ha formateado y cargado con los datos de prueba iniciales de manera exitosa.'
+      });
     } catch (error) {
       console.error('Reset error:', error);
+      setAdminFeedback({
+        type: 'error',
+        message: 'Error al formatear la base de datos: ' + (error instanceof Error ? error.message : String(error))
+      });
     } finally {
       setResetting(false);
+    }
+  };
+
+  const handleResetClientActions = async () => {
+    setResettingClients(true);
+    setShowResetClientsConfirm(false);
+    try {
+      const q = query(collection(db, 'clients'));
+      const snapshot = await getDocs(q);
+      
+      const docs = snapshot.docs;
+      const CHUNK_SIZE = 450; // Firestore limits write batches to 500 operations
+      
+      for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
+        const chunk = docs.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(db);
+        chunk.forEach((doc) => {
+          batch.update(doc.ref, {
+            status: 'available',
+            assignedTo: '',
+            lockedAt: null,
+            updatedAt: serverTimestamp()
+          });
+        });
+        await batch.commit();
+      }
+      
+      setAdminFeedback({
+        type: 'success',
+        message: 'Todos los clientes han sido restablecidos al estado "ATENDER" (Disponibles). Los registros de comisiones, billeteras y créditos se mantienen intactos.'
+      });
+    } catch (error) {
+      console.error('Error resetting client actions:', error);
+      setAdminFeedback({
+        type: 'error',
+        message: 'Error al reiniciar las acciones de los clientes: ' + (error instanceof Error ? error.message : String(error))
+      });
+    } finally {
+      setResettingClients(false);
     }
   };
 
@@ -1130,19 +1178,47 @@ export function AdminPanel({ profile }: { profile: UserProfile }) {
               </div>
             </div>
 
-            <div className="bg-surface p-8 rounded-3xl border border-slate-800 flex justify-between items-center">
+            <div className="bg-surface p-8 rounded-3xl border border-slate-800 space-y-6">
               <div>
                 <h3 className="text-sm font-black text-white uppercase tracking-widest">Zona de Peligro Administrativa</h3>
-                <p className="text-slate-500 text-[10px] mt-1">Solo use estas opciones si necesita reiniciar el entorno de pruebas.</p>
+                <p className="text-slate-500 text-[10px] mt-1">Acciones de mantenimiento y reinicio del sistema.</p>
               </div>
-              <button 
-                onClick={handleReset}
-                disabled={resetting}
-                className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-6 py-3 rounded-xl border border-red-500/20 transition-all font-black text-[10px] uppercase tracking-widest disabled:opacity-50 shadow-lg shadow-red-500/5 group"
-              >
-                <RefreshCw size={14} className={cn(resetting && 'animate-spin', "group-hover:rotate-180 transition-all duration-500")} />
-                {resetting ? 'Procesando...' : 'Formatear y Sembrar'}
-              </button>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-800/60">
+                <div className="p-4 bg-black/20 rounded-2xl border border-slate-800/40 flex flex-col justify-between gap-4">
+                  <div>
+                    <h4 className="text-[11px] font-black text-white uppercase tracking-wider">Reiniciar Acción en Clientes</h4>
+                    <p className="text-slate-500 text-[10px] mt-1 leading-relaxed">
+                      Devuelve TODOS los clientes al estado <strong className="text-emerald-400">"ATENDER"</strong> (Disponibles). No borra su información, no modifica comisiones, billeteras ni créditos.
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setShowResetClientsConfirm(true)}
+                    disabled={resettingClients}
+                    className="w-full flex items-center justify-center gap-2 bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-black px-6 py-3 rounded-xl border border-amber-500/20 transition-all font-black text-[10px] uppercase tracking-widest disabled:opacity-50 shadow-lg shadow-amber-500/5 group cursor-pointer"
+                  >
+                    <RefreshCw size={14} className={cn(resettingClients && 'animate-spin', "group-hover:rotate-180 transition-all duration-500")} />
+                    {resettingClients ? 'Procesando...' : 'Reiniciar Clientes a ATENDER'}
+                  </button>
+                </div>
+
+                <div className="p-4 bg-black/20 rounded-2xl border border-slate-800/40 flex flex-col justify-between gap-4">
+                  <div>
+                    <h4 className="text-[11px] font-black text-red-400 uppercase tracking-wider">Formatear Base de Datos</h4>
+                    <p className="text-slate-500 text-[10px] mt-1 leading-relaxed">
+                      Borra absolutamente todos los clientes actuales de la base de datos y vuelve a cargar los datos por defecto desde cero.
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setShowFormatDBConfirm(true)}
+                    disabled={resetting}
+                    className="w-full flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-6 py-3 rounded-xl border border-red-500/20 transition-all font-black text-[10px] uppercase tracking-widest disabled:opacity-50 shadow-lg shadow-red-500/5 group cursor-pointer"
+                  >
+                    <RefreshCw size={14} className={cn(resetting && 'animate-spin', "group-hover:rotate-180 transition-all duration-500")} />
+                    {resetting ? 'Procesando...' : 'Formatear y Sembrar'}
+                  </button>
+                </div>
+              </div>
             </div>
           </motion.div>
         )}
@@ -1396,6 +1472,181 @@ export function AdminPanel({ profile }: { profile: UserProfile }) {
                   </div>
                 </div>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Confirmation and Feedback Modals */}
+      <AnimatePresence>
+        {showResetClientsConfirm && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-surface w-full max-w-md rounded-3xl border border-slate-800 shadow-2xl overflow-hidden text-left"
+            >
+              <div className="p-6 border-b border-slate-800 bg-black/20 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
+                    <RefreshCw size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-black text-white uppercase tracking-widest">¿Confirmar Reinicio?</h3>
+                    <p className="text-[9px] text-slate-500 uppercase tracking-wider">Acción Administrativa</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowResetClientsConfirm(false)}
+                  className="text-slate-500 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  ¿Está seguro que desea reiniciar el estado de todos los clientes? 
+                </p>
+                <div className="p-3.5 bg-amber-500/5 rounded-xl border border-amber-500/10 text-[10px] text-amber-400/90 leading-normal space-y-2">
+                  <p className="font-bold uppercase tracking-wider text-amber-400">⚠️ Efectos de esta acción:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Todos los clientes pasarán al estado <strong className="text-white">"ATENDER" (Disponible)</strong>.</li>
+                    <li>Se removerá cualquier asesor asignado al cliente.</li>
+                    <li><strong className="text-white">NO</strong> se alterarán créditos, comisiones, billeteras ni historiales de liquidación de los asesores.</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="p-6 bg-black/20 border-t border-slate-800 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowResetClientsConfirm(false)}
+                  className="flex-1 py-3 px-4 rounded-xl border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-900 transition-all text-[10px] font-black uppercase tracking-widest cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetClientActions}
+                  disabled={resettingClients}
+                  className="flex-1 py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-black transition-all text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10 cursor-pointer disabled:opacity-50"
+                >
+                  {resettingClients ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin" />
+                      Procesando...
+                    </>
+                  ) : (
+                    'Sí, Reiniciar'
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showFormatDBConfirm && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-surface w-full max-w-md rounded-3xl border border-slate-800 shadow-2xl overflow-hidden text-left"
+            >
+              <div className="p-6 border-b border-slate-800 bg-black/20 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-red-500/10 text-red-500 rounded-lg">
+                    <Trash2 size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-black text-white uppercase tracking-widest">¿Formatear Base de Datos?</h3>
+                    <p className="text-[9px] text-red-500 uppercase tracking-wider font-bold">Peligro Extremo</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowFormatDBConfirm(false)}
+                  className="text-slate-500 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  ¿Está seguro que desea borrar todos los clientes y restablecer la base de datos a su estado original?
+                </p>
+                <div className="p-3.5 bg-red-500/5 rounded-xl border border-red-500/10 text-[10px] text-red-400 leading-normal space-y-2">
+                  <p className="font-bold uppercase tracking-wider text-red-400">🚨 consecuencias críticas:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Se borrarán permanentemente <strong className="text-white">TODOS</strong> los clientes actuales de la base de datos.</li>
+                    <li>Se volverán a sembrar clientes por defecto para pruebas y demostraciones.</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="p-6 bg-black/20 border-t border-slate-800 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowFormatDBConfirm(false)}
+                  className="flex-1 py-3 px-4 rounded-xl border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-900 transition-all text-[10px] font-black uppercase tracking-widest cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  disabled={resetting}
+                  className="flex-1 py-3 px-4 rounded-xl bg-red-500 hover:bg-red-600 text-white transition-all text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-red-500/10 cursor-pointer disabled:opacity-50"
+                >
+                  {resetting ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin" />
+                      Procesando...
+                    </>
+                  ) : (
+                    'Sí, Formatear'
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {adminFeedback && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-surface w-full max-w-md rounded-3xl border border-slate-800 shadow-2xl p-6 text-center space-y-4"
+            >
+              <div className={cn(
+                "mx-auto w-12 h-12 rounded-full flex items-center justify-center border",
+                adminFeedback.type === 'success' 
+                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" 
+                  : "bg-red-500/10 border-red-500/20 text-red-500"
+              )}>
+                {adminFeedback.type === 'success' ? <Check size={24} /> : <X size={24} />}
+              </div>
+              <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                {adminFeedback.type === 'success' ? 'Operación Exitosa' : 'Ocurrió un Error'}
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                {adminFeedback.message}
+              </p>
+              <button
+                onClick={() => {
+                  setAdminFeedback(null);
+                  if (adminFeedback.type === 'success') {
+                    window.location.reload();
+                  }
+                }}
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-black py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all cursor-pointer"
+              >
+                Aceptar
+              </button>
             </motion.div>
           </div>
         )}

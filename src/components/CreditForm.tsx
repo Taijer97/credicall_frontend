@@ -33,16 +33,24 @@ export function CreditForm({ client, workerId, onClose, previousDebt, previousIn
   const [selectedMonths, setSelectedMonths] = useState<number>(12);
   const [sending, setSending] = useState(false);
   const [showShareTooltip, setShowShareTooltip] = useState(false);
+  const [installmentsToSubtract, setInstallmentsToSubtract] = useState<number>(0);
 
   const generateSummaryMessage = () => {
-    const debtInfo = finalDebt > 0 ? ` (Incluye ${formatCurrency(finalDebt)} de deuda anterior)` : '';
+    let debtInfo = '';
+    if (finalDebt > 0) {
+      if (installmentsToSubtract > 0) {
+        debtInfo = ` (Incluye ${formatCurrency(finalDebt)} de deuda anterior con descuento de ${installmentsToSubtract} cuota${installmentsToSubtract > 1 ? 's' : ''})`;
+      } else {
+        debtInfo = ` (Incluye ${formatCurrency(finalDebt)} de deuda anterior)`;
+      }
+    }
     return `*RESUMEN DE CRÉDITO - WASITECH*\n\n` +
            `Hola *${client.firstName}*, aquí tienes el detalle de tu crédito:\n\n` +
            `💵 *Efectivo a recibir:* ${formatCurrency(selectedAmount)}\n` +
            `📈 *Total a Cobrar:* ${formatCurrency(totalCharge)}${debtInfo}\n` +
            `🗓️ *Plazo de Pago:* ${displayMonths} meses\n` +
            `💳 *Cuota Mensual:* ${formatCurrency(finalMonthlyFee)}\n\n` +
-           `_Sujeto a verificación. Gracias por confiar en WasiTech._`;
+           `_¿Está de acuerdo con lo detallado?_`;
   };
 
   const handleShare = () => {
@@ -62,7 +70,8 @@ export function CreditForm({ client, workerId, onClose, previousDebt, previousIn
 
   // Derived values
   const baseCharge = customCharge;
-  const finalDebt = dataConsulted ? previousDebt : 0;
+  const subtractedDebtAmount = dataConsulted && previousInstallment > 0 ? (installmentsToSubtract * previousInstallment) : 0;
+  const finalDebt = dataConsulted ? Math.max(0, previousDebt - subtractedDebtAmount) : 0;
   const totalCharge = baseCharge + finalDebt;
   
   // Logic for Same Installment
@@ -108,6 +117,8 @@ export function CreditForm({ client, workerId, onClose, previousDebt, previousIn
           months: displayMonths,
           monthlyFee: finalMonthlyFee,
           previousDebtIncluded: finalDebt,
+          installmentsSubtracted: installmentsToSubtract,
+          subtractedDebtAmount: subtractedDebtAmount,
           mode: usePreviousInstallment ? 'keep_installment' : 'fixed_months'
         }
       };
@@ -272,6 +283,36 @@ export function CreditForm({ client, workerId, onClose, previousDebt, previousIn
                   </div>
                 </div>
               </div>
+
+              {dataConsulted && previousInstallment > 0 && (
+                <div className="bg-black/30 p-3 rounded-xl border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Restar Cuotas de Deuda Anterior</span>
+                    {installmentsToSubtract > 0 && (
+                      <span className="text-[10px] text-amber-400 font-bold font-mono">
+                        -{formatCurrency(installmentsToSubtract * previousInstallment)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[0, 1, 2].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setInstallmentsToSubtract(num)}
+                        className={cn(
+                          "py-1.5 px-1 rounded-lg border font-black text-[9px] transition-all cursor-pointer text-center uppercase tracking-wider",
+                          installmentsToSubtract === num
+                            ? "bg-amber-500 border-amber-500 text-black shadow-lg shadow-amber-500/10"
+                            : "bg-black/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:bg-black/60"
+                        )}
+                      >
+                        {num === 0 ? 'No restar' : `Restar ${num}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className={cn(
                 "flex items-center justify-between p-2 rounded-xl transition-all border",
